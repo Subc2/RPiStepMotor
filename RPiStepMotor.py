@@ -30,6 +30,7 @@ import math
 import RPi.GPIO as GPIO
 import threading
 import time
+from __future__ import division
 
 allMotors = set()
 allPins = set()
