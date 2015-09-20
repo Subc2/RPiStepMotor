@@ -59,9 +59,9 @@ class StepMotor(object):
 		GPIO.setup(pins, GPIO.OUT, initial=False)
 		allPins.update(pins)
 		allMotors.add(self)
-		self.__fullRotation = fullRotation
-		self.__pins = pins
-		self.__thread = threading.Thread()
+		self._fullRotation = fullRotation
+		self._pins = pins
+		self._thread = threading.Thread()
 	
 	def cleanup(self=None):
 		"""Perform a cleanup of stepper motor object(s).
@@ -83,26 +83,26 @@ class StepMotor(object):
 			iterable = (self, )
 		for motor in iterable.copy():
 			if motor.isRunning():
-				motor.__thread.join()
+				motor._thread.join()
 			allMotors.remove(motor)
-			GPIO.cleanup(motor.__pins)
-			allPins.difference_update(motor.__pins)
-			del motor.__fullRotation
-			del motor.__pins
-			del motor.__thread
+			GPIO.cleanup(motor._pins)
+			allPins.difference_update(motor._pins)
+			del motor._fullRotation
+			del motor._pins
+			del motor._thread
 	
 	def finish(self):
 		"""Wait till object's thread end."""
 		if self.isRunning():
-			self.__thread.join()
+			self._thread.join()
 	
 	def isRunning(self):
 		"""Return True or False, depending on the state of motor."""
-		return self.__thread.is_alive()
+		return self._thread.is_alive()
 	
 	def isStopped(self):
 		"""Return True or False, depending on the state of motor."""
-		return not self.__thread.is_alive()
+		return not self._thread.is_alive()
 	
 	def rotate(self, angle, timeForRevolution, function=None, nofork=False, radians=False):
 		"""Rotate the step motor through an angle 'angle' in time 'timeForRevolution'.
@@ -117,16 +117,16 @@ class StepMotor(object):
 		"""
 		if self.isRunning():
 			raise RuntimeError("step motor already running")
-		pins = self.__pins[::-1] if angle < 0 else self.__pins
+		pins = self._pins[::-1] if angle < 0 else self._pins
 		angle = math.degrees(abs(angle)) if radians else abs(angle)
-		steps = int(angle / 360 * self.__fullRotation)
+		steps = int(angle / 360 * self._fullRotation)
 		if nofork:
-			self.__fullCycle(pins, steps, timeForRevolution, function)
+			self._fullCycle(pins, steps, timeForRevolution, function)
 		else:
-			self.__thread = threading.Thread(target=self.__fullCycle, args=(pins, steps, timeForRevolution, function))
-			self.__thread.start()
+			self._thread = threading.Thread(target=self._fullCycle, args=(pins, steps, timeForRevolution, function))
+			self._thread.start()
 	
-	def __fullCycle(self, pins, steps, timeForRevolution, function):
+	def _fullCycle(self, pins, steps, timeForRevolution, function):
 		"""Function does all the dirty work in the process of rotation stepper motor.
 		
 		It is always executed by rotate().
