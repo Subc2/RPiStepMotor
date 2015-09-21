@@ -24,7 +24,7 @@ __author__ = "Paweł Zacharek"
 __copyright__ = "Copyright (C) 2015 Paweł Zacharek"
 __date__ = "2015-09-18"
 __license__ = "GPLv2+"
-__version__ = "0.7.2"
+__version__ = "0.7.3"
 
 import math
 import RPi.GPIO as GPIO
@@ -55,11 +55,17 @@ class StepMotor(object):
 		if [pin for pin in pins if pin in allPins]:
 			raise PinsAlreadyUsed("some pins are already in use")
 		global allPins
-		GPIO.setup(pins, GPIO.OUT, initial=False)
 		allPins.update(pins)
 		self._fullRotation = fullRotation
 		self._pins = pins
+
+        def __enter__(self):
+		GPIO.setup(self._pins, GPIO.OUT, initial=False)
 		self._thread = threading.Thread()
+
+        def __exit__(self,a,b,c):
+                print a,b,c #TODO
+                self.cleanup()
 	
 	def cleanup(self):
 		"""Perform a cleanup of stepper motor object(s).
@@ -75,7 +81,6 @@ class StepMotor(object):
 		global allPins
                 motor = self
                 self.finish()
-		allMotors.remove(motor)
 		GPIO.cleanup(motor._pins)
 		allPins.difference_update(motor._pins)
 		del motor._fullRotation
