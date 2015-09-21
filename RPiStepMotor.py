@@ -26,13 +26,14 @@ __author__ = "Paweł Zacharek"
 __copyright__ = "Copyright (C) 2015 Paweł Zacharek"
 __date__ = "2015-09-18"
 __license__ = "GPLv2+"
-__version__ = "0.7.3"
+__version__ = "0.7.4"
 
 import math
 import RPi.GPIO as GPIO
 import threading
 import time
 
+allMotors = set()  #eh
 allPins = set()
 minimalStepDelay = 0.00195
 phases = 4
@@ -62,14 +63,15 @@ class StepMotor(object):
 
         def __enter__(self):
 		GPIO.setup(self._pins, GPIO.OUT, initial=False)
+                allMotors.add(self) #eh
 		self._thread = threading.Thread()
 
         def __exit__(self,a,b,c):
                 print a,b,c #TODO
                 self.cleanup()
 	
-	def cleanup(self):
-		"""Perform a cleanup of stepper motor object(s).
+        def cleanup(self=None): #eh
+                """Perform a cleanup of stepper motor object(s).
 		
 		Function waits till all threads end and frees related GPIO pins,
 		so cleaned up objects cannot be used again.
@@ -79,6 +81,11 @@ class StepMotor(object):
 		    stepper motor object, otherwise perform cleanup of specified object
 		    or objects (if 'self' is a tuple, list or set)
 		"""
+                iterable = allMotors if self is None else self if type(self) in (tuple,list,set) else (self,) #eh
+                for motor in iterable.copy(): motor.__cleanup__()
+
+	def __cleanup__(self):
+                global allMotors #eh
 		global allPins
                 motor = self
                 self.finish()
@@ -87,11 +94,10 @@ class StepMotor(object):
 		del motor._fullRotation
 		del motor._pins
 		del motor._thread
-	
+
 	def finish(self):
 		"""Wait till object's thread end."""
-		if self.isRunning():
-			self._thread.join()
+		if self.isRunning(): self._thread.join()
 	
 	def isRunning(self):
 		"""Return True or False, depending on the state of motor."""
