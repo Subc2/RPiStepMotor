@@ -30,7 +30,7 @@ import math
 import RPi.GPIO as GPIO
 import threading
 import time
-from __future__ import division
+from __future__ import division, unicode_literals
 
 allPins = set()
 minimalStepDelay = 0.00195
