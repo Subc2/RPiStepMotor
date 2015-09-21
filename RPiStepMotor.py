@@ -20,6 +20,8 @@ Ground  | | +-----IN2      | |
    +----------------+   +----+
 """
 
+from __future__ import division, unicode_literals
+
 __author__ = "Paweł Zacharek"
 __copyright__ = "Copyright (C) 2015 Paweł Zacharek"
 __date__ = "2015-09-18"
@@ -30,7 +32,6 @@ import math
 import RPi.GPIO as GPIO
 import threading
 import time
-from __future__ import division, unicode_literals
 
 allPins = set()
 minimalStepDelay = 0.00195
