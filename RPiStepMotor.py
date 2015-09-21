@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+# -*- coding: utf-8 -*-
 
 """RPiStepMotor - STEP MOTOR 28BYJ-48 driver for Raspberry Pi
 
@@ -20,18 +20,20 @@ Ground  | | +-----IN2      | |
    +----------------+   +----+
 """
 
+from __future__ import division, unicode_literals
+
 __author__ = "Paweł Zacharek"
 __copyright__ = "Copyright (C) 2015 Paweł Zacharek"
 __date__ = "2015-09-18"
 __license__ = "GPLv2+"
-__version__ = "0.7.0"
+__version__ = "0.7.4"
 
 import math
 import RPi.GPIO as GPIO
 import threading
 import time
 
-allMotors = set()
+allMotors = set()  #eh
 allPins = set()
 minimalStepDelay = 0.00195
 phases = 4
@@ -51,19 +53,25 @@ class StepMotor(object):
 		fullRotation -- number of cycles needed to make a complete turn
 		"""
 		if len(pins) != phases:
-			raise ValueError("step motor needs %d input pins" % phases)
+			raise WrongInputPinsNumber("step motor needs %d input pins" % phases)
 		if [pin for pin in pins if pin in allPins]:
-			raise ValueError("some pins are already in use")
-		global allMotors, allPins
-		GPIO.setup(pins, GPIO.OUT, initial=False)
+			raise PinsAlreadyUsed("some pins are already in use")
+		global allPins
 		allPins.update(pins)
-		allMotors.add(self)
-		self.__fullRotation = fullRotation
-		self.__pins = pins
-		self.__thread = threading.Thread()
+		self._fullRotation = fullRotation
+		self._pins = pins
+
+        def __enter__(self):
+		GPIO.setup(self._pins, GPIO.OUT, initial=False)
+                allMotors.add(self) #eh
+		self._thread = threading.Thread()
+
+        def __exit__(self,a,b,c):
+                print a,b,c #TODO
+                self.cleanup()
 	
-	def cleanup(self=None):
-		"""Perform a cleanup of stepper motor object(s).
+        def cleanup(self=None): #eh
+                """Perform a cleanup of stepper motor object(s).
 		
 		Function waits till all threads end and frees related GPIO pins,
 		so cleaned up objects cannot be used again.
@@ -73,35 +81,31 @@ class StepMotor(object):
 		    stepper motor object, otherwise perform cleanup of specified object
 		    or objects (if 'self' is a tuple, list or set)
 		"""
-		global allMotors, allPins
-		if self is None:
-			iterable = allMotors
-		elif type(self) in (tuple, list, set):
-			iterable = self
-		else:
-			iterable = (self, )
-		for motor in iterable.copy():
-			if motor.isRunning():
-				motor.__thread.join()
-			allMotors.remove(motor)
-			GPIO.cleanup(motor.__pins)
-			allPins.difference_update(motor.__pins)
-			del motor.__fullRotation
-			del motor.__pins
-			del motor.__thread
-	
+                iterable = allMotors if self is None else self if type(self) in (tuple,list,set) else (self,) #eh
+                for motor in iterable.copy(): motor.__cleanup__()
+
+	def __cleanup__(self):
+                global allMotors #eh
+		global allPins
+                motor = self
+                self.finish()
+		GPIO.cleanup(motor._pins)
+		allPins.difference_update(motor._pins)
+		del motor._fullRotation
+		del motor._pins
+		del motor._thread
+
 	def finish(self):
 		"""Wait till object's thread end."""
-		if self.isRunning():
-			self.__thread.join()
+		if self.isRunning(): self._thread.join()
 	
 	def isRunning(self):
 		"""Return True or False, depending on the state of motor."""
-		return self.__thread.is_alive()
+		return self._thread.is_alive()
 	
 	def isStopped(self):
 		"""Return True or False, depending on the state of motor."""
-		return not self.__thread.is_alive()
+		return not self._thread.is_alive()
 	
 	def rotate(self, angle, timeForRevolution, function=None, nofork=False, radians=False):
 		"""Rotate the step motor through an angle 'angle' in time 'timeForRevolution'.
@@ -115,17 +119,17 @@ class StepMotor(object):
 		radians -- use radians instead of degrees
 		"""
 		if self.isRunning():
-			raise RuntimeError("step motor already running")
-		pins = self.__pins[::-1] if angle < 0 else self.__pins
+			raise AlreadyRunning("step motor already running")
+		pins = self._pins[::-1] if angle < 0 else self._pins
 		angle = math.degrees(abs(angle)) if radians else abs(angle)
-		steps = int(angle / 360 * self.__fullRotation)
+		steps = int(angle / 360 * self._fullRotation)
 		if nofork:
-			self.__fullCycle(pins, steps, timeForRevolution, function)
+			self._fullCycle(pins, steps, timeForRevolution, function)
 		else:
-			self.__thread = threading.Thread(target=self.__fullCycle, args=(pins, steps, timeForRevolution, function))
-			self.__thread.start()
+			self._thread = threading.Thread(target=self._fullCycle, args=(pins, steps, timeForRevolution, function))
+			self._thread.start()
 	
-	def __fullCycle(self, pins, steps, timeForRevolution, function):
+	def _fullCycle(self, pins, steps, timeForRevolution, function):
 		"""Function does all the dirty work in the process of rotation stepper motor.
 		
 		It is always executed by rotate().
@@ -152,7 +156,7 @@ class StepMotor(object):
 			stepDelay = timePeriod / max(cycles) / phases
 		
 		if stepDelay < minimalStepDelay:
-			raise ValueError("step delay is too small")
+			raise StepDelayTooSmall("step delay is too small")
 		
 		if function is None:
 			for i in range(steps):
@@ -171,3 +175,7 @@ class StepMotor(object):
 							GPIO.output(pin, True)
 							time.sleep(stepDelay)
 							GPIO.output(pin, False)
+class AlreadyRunning(RuntimeError): pass
+class StepDelayTooSmall(ValueError): pass
+class WrongInputPinsNumber(ValueError): pass
+class PinsAlreadyUsed(ValueError): pass
