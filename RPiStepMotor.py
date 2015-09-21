@@ -24,7 +24,7 @@ __author__ = "Paweł Zacharek"
 __copyright__ = "Copyright (C) 2015 Paweł Zacharek"
 __date__ = "2015-09-18"
 __license__ = "GPLv2+"
-__version__ = "0.7.0"
+__version__ = "0.7.1"
 
 import math
 import RPi.GPIO as GPIO
