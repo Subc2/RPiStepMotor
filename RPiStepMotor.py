@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
-
 """RPiStepMotor - STEP MOTOR 28BYJ-48 driver for Raspberry Pi
 
-        Power----------------+
+				Power----------------+
 GPIOXX--------+              |
 GPIOXX------+ |              |
 GPIOXX----+ | |  +=========+ |
@@ -24,16 +22,16 @@ from __future__ import division, unicode_literals
 
 __author__ = "Paweł Zacharek"
 __copyright__ = "Copyright (C) 2015 Paweł Zacharek"
-__date__ = "2015-09-18"
+__date__ = "2015-09-21"
 __license__ = "GPLv2+"
-__version__ = "0.7.4"
+__version__ = "0.7.5"
 
 import math
 import RPi.GPIO as GPIO
 import threading
 import time
 
-allMotors = set()  #eh
+allMotors = set()
 allPins = set()
 minimalStepDelay = 0.00195
 phases = 4
@@ -56,48 +54,44 @@ class StepMotor(object):
 			raise WrongInputPinsNumber("step motor needs %d input pins" % phases)
 		if [pin for pin in pins if pin in allPins]:
 			raise PinsAlreadyUsed("some pins are already in use")
-		global allPins
+		global allMotors, allPins
+		allMotors.add(self)
 		allPins.update(pins)
 		self._fullRotation = fullRotation
 		self._pins = pins
-
-        def __enter__(self):
-		GPIO.setup(self._pins, GPIO.OUT, initial=False)
-                allMotors.add(self) #eh
 		self._thread = threading.Thread()
-
-        def __exit__(self,a,b,c):
-                print a,b,c #TODO
-                self.cleanup()
+		GPIO.setup(self._pins, GPIO.OUT, initial=False)
 	
-        def cleanup(self=None): #eh
-                """Perform a cleanup of stepper motor object(s).
+	def cleanup(self=None):
+		"""Perform a cleanup of stepper motor object(s).
 		
 		Function waits till all threads end and frees related GPIO pins,
 		so cleaned up objects cannot be used again.
 		
 		Keyword arguments:
 		self -- if equals to 'None' cleanup includes every previously defined
-		    stepper motor object, otherwise perform cleanup of specified object
-		    or objects (if 'self' is a tuple, list or set)
+				stepper motor object, otherwise perform cleanup of specified object
+				or objects (if 'self' is a tuple, list or set)
 		"""
-                iterable = allMotors if self is None else self if type(self) in (tuple,list,set) else (self,) #eh
-                for motor in iterable.copy(): motor.__cleanup__()
-
+		iterable = allMotors if self is None else self if type(self) in (tuple, list, set) else (self,)
+		for motor in iterable.copy():
+			motor.__cleanup__()
+	
 	def __cleanup__(self):
-                global allMotors #eh
-		global allPins
-                motor = self
-                self.finish()
-		GPIO.cleanup(motor._pins)
-		allPins.difference_update(motor._pins)
-		del motor._fullRotation
-		del motor._pins
-		del motor._thread
-
+		""" TODO """
+		global allMotors, allPins
+		if self.isRunning():
+			self.finish()
+		GPIO.cleanup(self._pins)
+		allPins.difference_update(self._pins)
+		del self._fullRotation
+		del self._pins
+		del self._thread
+	
 	def finish(self):
 		"""Wait till object's thread end."""
-		if self.isRunning(): self._thread.join()
+		if self.isRunning():
+			self._thread.join()
 	
 	def isRunning(self):
 		"""Return True or False, depending on the state of motor."""
@@ -112,9 +106,9 @@ class StepMotor(object):
 		
 		Keyword arguments:
 		function -- three-element tuple containing function object (velocity
-		    function of time) and its first and last integer argument (used to
-		    create iterable - the more they differ, the more accurate is the
-		    result, but the time of single step is also shortened)
+				function of time) and its first and last integer argument (used to
+				create iterable - the more they differ, the more accurate is the
+				result, but the time of single step is also shortened)
 		nofork -- setting it can disable creating a new thread
 		radians -- use radians instead of degrees
 		"""
@@ -175,7 +169,15 @@ class StepMotor(object):
 							GPIO.output(pin, True)
 							time.sleep(stepDelay)
 							GPIO.output(pin, False)
-class AlreadyRunning(RuntimeError): pass
-class StepDelayTooSmall(ValueError): pass
-class WrongInputPinsNumber(ValueError): pass
-class PinsAlreadyUsed(ValueError): pass
+
+class AlreadyRunning(RuntimeError):
+	pass
+
+class StepDelayTooSmall(ValueError):
+	pass
+
+class WrongInputPinsNumber(ValueError):
+	pass
+
+class PinsAlreadyUsed(ValueError):
+	pass
