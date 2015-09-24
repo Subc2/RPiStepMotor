@@ -22,10 +22,10 @@ from __future__ import division, unicode_literals
 
 __author__ = "Paweł Zacharek"
 __copyright__ = "Copyright (C) 2015 Paweł Zacharek"
-__date__ = "2015-09-22"
+__date__ = "2015-09-24"
 __name__ = "RPiStepMotor"
 __license__ = "GPLv2+"
-__version__ = "0.7.6"
+__version__ = "0.7.7"
 
 import math
 import RPi.GPIO as GPIO
@@ -51,7 +51,7 @@ class StepMotor(object):
 		"""Create an object of stepper motor.
 		
 		Keyword arguments:
-		pins -- four-element integer tuple defining motor's connections
+		pins -- four-element integer tuple/list defining motor's connections
 		fullRotation -- number of cycles needed to make a complete turn
 		"""
 		if len(pins) != phases:
@@ -62,7 +62,7 @@ class StepMotor(object):
 		allMotors.add(self)
 		allPins.update(pins)
 		self._fullRotation = fullRotation
-		self._pins = pins
+		self._pins = tuple(pins)
 		self._thread = threading.Thread()
 		try:
 			GPIO.setup(self._pins, GPIO.OUT, initial=False)
@@ -70,6 +70,14 @@ class StepMotor(object):
 			warnings.warn("pin numbering mode wasn't set, using default settings", RuntimeWarning)
 			self.setmode()
 			GPIO.setup(self._pins, GPIO.OUT, initial=False)
+	
+	def __enter__(self):
+		"""Enter the runtime context related to stepper motor object."""
+		return self
+	
+	def __exit__(self, exc_type, exc_value, traceback):
+		"""Exit the runtime context related to stepper motor object."""
+		self.cleanup()
 	
 	def cleanup(self=None):
 		"""Perform a cleanup of stepper motor object(s).
