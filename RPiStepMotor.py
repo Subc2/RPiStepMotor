@@ -21,11 +21,11 @@ Ground  | | +-----IN2      | |
 from __future__ import division, unicode_literals
 
 __author__ = "Paweł Zacharek"
-__copyright__ = "Copyright (C) 2015 Paweł Zacharek"
-__date__ = "2015-09-24"
+__copyright__ = "Copyright (C) 2015,2017 Paweł Zacharek"
+__date__ = "2017-07-26"
 __name__ = "RPiStepMotor"
 __license__ = "GPLv2+"
-__version__ = "0.7.7"
+__version__ = "0.7.8"
 
 import math
 import RPi.GPIO as GPIO
@@ -159,13 +159,14 @@ class StepMotor(object):
 		else:
 			func, start, end = function
 			transition = -1 if start > end else 1
-			iterable = range(start, end, transition)
-			values = [func(i + 0.5 * transition) for i in iterable]
-			oneStepValue = sum(values) / steps
-			timePeriod = timeForRevolution / len(iterable)
+			iterable = range(start, end + transition, transition)
+			values = [func(i) for i in iterable]
+			interpolated = [(values[i] + values[i + 1]) / 2 for i in range(len(values) - 1)]
+			oneStepValue = sum(interpolated) / steps
+			timePeriod = timeForRevolution / len(interpolated)
 			# create a list containing number of cycles for each time period
 			cycles, remainder = [], 0
-			for value in values:
+			for value in interpolated:
 				integer = value // oneStepValue
 				remainder += value / oneStepValue - integer
 				if round(remainder) >= 1:
